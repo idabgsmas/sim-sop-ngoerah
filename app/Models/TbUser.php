@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Filament\Models\Contracts\FilamentUser; // Penting untuk Filament
+use Filament\Models\Contracts\HasName;
 
-class TbUser extends Authenticatable
+class TbUser extends Authenticatable implements FilamentUser, HasName
 {
     use Notifiable, SoftDeletes;
 
@@ -33,29 +35,34 @@ class TbUser extends Authenticatable
             return false;
         }
 
+        // Ambil nama role dari relasi (Pastikan user punya role)
+        // Menggunakan optional() agar tidak error jika id_role null
+        $roleName = optional($this->role)->nama_role;
+
         // 2. Logika Panel ADMIN (Super Admin & Verifikator)
+        
         if ($panel->getId() === 'admin') {
-            return $this->role === 'Administrator';
+            return $roleName === 'Administrator';
         }
 
         // 3. Logika Panel PENGUSUL
         if ($panel->getId() === 'pengusul') {
-            return $this->role === 'Pengusul';
+            return $roleName === 'Pengusul';
         }
 
         // 4. Logika Panel DIREKSI
         if ($panel->getId() === 'direksi') {
-            return $this->role === 'Direksi';
+            return $roleName === 'Direksi';
         }
 
         // 5. Logika Panel VERIFIKATOR
         if ($panel->getId() === 'verifikator') {
-            return $this->role === 'Verifikator';
+            return $roleName === 'Verifikator';
         }
 
         // 6. Logika Panel Viewer
         if ($panel->getId() === 'viewer') {
-            return $this->role === 'Viewer';
+            return $roleName === 'Viewer';
         }
 
         // Default: Tolak akses
