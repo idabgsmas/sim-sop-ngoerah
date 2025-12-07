@@ -70,14 +70,11 @@ class EditSop extends EditRecord
             // Validasi Manual (Karena di form schema kita buat nullable)
             $this->validate([
                 'data.judul_sop' => 'required',
-                'data.deskripsi_sop' => 'required',
                 'data.nomor_sop' => 'required',
-                'data.kategori_sop' => 'required',
+                'data.kategori_sop' => 'required'   ,
                 'data.dokumen_path' => 'required',
                 'data.tgl_pengesahan' => 'required',
                 'data.tgl_berlaku' => 'required',
-                'data.tgl_kadaluwarsa' => 'required',
-                'data.tgl_review_tahunan' => 'required',
             ]);
             
             $data['id_status'] = Sop::STATUS_BELUM_DIVERIFIKASI;

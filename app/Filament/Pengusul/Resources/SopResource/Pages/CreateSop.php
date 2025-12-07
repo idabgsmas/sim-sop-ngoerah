@@ -87,14 +87,11 @@ class CreateSop extends CreateRecord
             // Lakukan VALIDASI MANUAL di sini karena di Form Schema kita buat nullable
             $this->validate([
                 'data.judul_sop' => 'required',
-                'data.deskripsi_sop' => 'required',
                 'data.nomor_sop' => 'required',
-                'data.kategori_sop' => 'required',
+                'data.kategori_sop' => 'required'   ,
                 'data.dokumen_path' => 'required',
                 'data.tgl_pengesahan' => 'required',
                 'data.tgl_berlaku' => 'required',
-                'data.tgl_kadaluwarsa' => 'required',
-                'data.tgl_review_tahunan' => 'required',
             ]);
             
             // Set Status ke BELUM DIVERIFIKASI (ID 2)

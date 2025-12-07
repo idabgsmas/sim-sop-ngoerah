@@ -120,7 +120,7 @@ class SopResource extends Resource
                             ->columnSpanFull(),
 
                         Forms\Components\FileUpload::make('dokumen_path')
-                            ->nullable()
+                            // ->nullable()
                             ->label('Dokumen SOP (PDF)')
                             ->acceptedFileTypes(['application/pdf'])
                             ->directory('sop-documents')
