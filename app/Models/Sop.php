@@ -15,15 +15,31 @@ class Sop extends Model
         'nomor_sop', 'judul_sop', 'deskripsi', 'kategori_sop',
         'dokumen_path', 'tgl_pengesahan', 'tgl_berlaku',
         'tgl_review_tahunan', 'tgl_kadaluwarsa', 'id_status',
-        'id_user', 'created_by', 'updated_by', 'deleted_by'
+        'id_user', 'is_all_units', 'id_unit_kerja', 'created_by', 'updated_by', 'deleted_by'
     ];
+
+    // Helper untuk Logic Status (Sesuaikan ID dengan database tb_status Anda)
+    const STATUS_DRAFT = 1; 
+    const STATUS_BELUM_DIVERIFIKASI = 2;
+    const STATUS_REVISI = 3; 
+    const STATUS_AKTIF = 4;
+    const STATUS_KADALUWARSA = 5;
     
     protected $casts = [
-        'tgl_disahkan' => 'datetime',
+        'tgl_pengesahan' => 'datetime',
         'tgl_berlaku' => 'datetime',
         'tgl_kadaluwarsa' => 'datetime',
         'tgl_review_tahunan' => 'datetime',
     ];
+
+    // Relasi User Verifikator (Untuk Notifikasi)
+    // Asumsi: Kita cari user dengan role Verifikator
+    public static function getVerifikators()
+    {
+        return TbUser::whereHas('role', function($q) {
+            $q->where('nama_role', 'Verifikator');
+        })->get();
+    }
 
     // Pemilik SOP (Unit)
     public function unitKerja()
