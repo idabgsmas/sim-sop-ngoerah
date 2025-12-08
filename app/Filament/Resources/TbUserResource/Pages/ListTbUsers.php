@@ -14,7 +14,8 @@ class ListTbUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Tambah User Baru'),
+                ->label('Tambah User Baru')
+                ->icon('heroicon-o-user-plus'),
         ];
     }
 }

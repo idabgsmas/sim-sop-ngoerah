@@ -14,7 +14,8 @@ class ListDirektorats extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Tambah Direktorat Baru'),
+                ->label('Tambah Direktorat Baru')
+                ->icon('heroicon-o-plus'),
         ];
     }
 }

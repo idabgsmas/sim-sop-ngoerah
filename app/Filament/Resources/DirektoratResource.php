@@ -17,7 +17,7 @@ class DirektoratResource extends Resource
 {
     protected static ?string $model = Direktorat::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-building-library';
 
     protected static ?string $recordTitleAttribute = 'Direktorat';
 

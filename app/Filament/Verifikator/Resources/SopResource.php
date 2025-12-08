@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
+use Joaopaulolndev\FilamentPdfViewer\Infolists\Components\PdfViewerEntry;
 
 class SopResource extends Resource
 {
@@ -89,10 +92,12 @@ class SopResource extends Resource
 
         ->actions([
             // Tombol Lihat Detail (View Only)
-            Tables\Actions\ViewAction::make(),
+            Tables\Actions\ViewAction::make()
+                ->label(''),
 
             // Tombol Download Dokumen
-            Tables\Actions\Action::make('download')
+            Tables\Actions\Action::make('unduh')
+                ->label('')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->url(fn (Sop $record) => asset('storage/' . $record->dokumen_path))
                 ->openUrlInNewTab(),
@@ -101,7 +106,7 @@ class SopResource extends Resource
             
             // 1. TOMBOL SETUJUI / VERIFIKASI
             Action::make('approve')
-                ->label('Verifikasi')
+                ->label('Setujui')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
@@ -112,11 +117,14 @@ class SopResource extends Resource
                     $record->update([
                         'id_status' => Sop::STATUS_AKTIF, // ID 4 = Aktif
                         // 'tgl_berlaku' => now(), // Opsional: Set tgl berlaku saat di-approve? (Tergantung kebijakan)
+                        // Opsional: Catat siapa verifikatornya jika ada kolomnya
+                        // 'verified_by' => auth()->id(),
                     ]);
                     
                     Notification::make()->title('SOP Berhasil Diverifikasi')
                         ->success()
                         ->send();
+                    // (Nanti di sini kita selipkan notifikasi Service)
                 }),
 
             // 2. TOMBOL TOLAK / MINTA REVISI
@@ -126,7 +134,7 @@ class SopResource extends Resource
                 ->color('danger')
                 ->form([
                     \Filament\Forms\Components\Textarea::make('catatan_revisi')
-                        ->label('Catatan Revisi untuk Pengusul')
+                        ->label('Catatan Revisi')
                         ->required(),
                 ])
                 ->visible(fn (Sop $record) => $record->id_status == Sop::STATUS_BELUM_DIVERIFIKASI)
@@ -138,11 +146,127 @@ class SopResource extends Resource
                     ]);
                     
                     // Kita bisa simpan history revisi di tabel tb_history_sop nanti
+                    // Simpan catatan revisi (bisa ke history atau kolom khusus)
+                    // Simpan ke history SOP
+                    // $record->histories()->create([
+                    //     'id_user' => auth()->id(),
+                    //     'id_status' => 3, // Status Revisi
+                    //     'keterangan_perubahan' => 'Catatan Verifikator: ' . $data['catatan_revisi'],
+                    //     'dokumen_path' => $record->dokumen_path, // Snapshot file saat ini
+                    // ]);
                     
                     Notification::make()->title('SOP Dikembalikan untuk Revisi')->warning()->send();
                 }),
         ]);
 }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                // --- HEADER INFORMASI ---
+                Infolists\Components\Section::make('Informasi Dokumen')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('judul_sop')
+                            ->label('Judul SOP')
+                            ->weight('bold')
+                            ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                            ->columnSpanFull(),
+                        
+                        Infolists\Components\TextEntry::make('nomor_sop')
+                            ->label('Nomor Dokumen')
+                            ->copyable(),
+
+                        Infolists\Components\TextEntry::make('deskripsi')
+                            ->label('Deskripsi Singkat')
+                            ->html()
+                            // ->columnSpanFull()
+                            ->placeholder('Tidak ada deskripsi'),
+
+                        // MENAMPILKAN UNIT & DIREKTORAT
+                        Infolists\Components\TextEntry::make('unitKerja.nama_unit')
+                                ->label('Unit Pengusul')
+                                ->icon('heroicon-m-building-office'),
+                                // ->weight('bold'),
+                                
+                        Infolists\Components\TextEntry::make('unitKerja.direktorat.nama_direktorat')
+                                ->label('Direktorat')
+                                ->icon('heroicon-m-building-library')
+                                ->color('gray'),
+                        
+                        Infolists\Components\TextEntry::make('kategori_sop')
+                            ->badge()
+                            ->color('info'),
+                            
+                        Infolists\Components\TextEntry::make('status.nama_status')
+                            ->badge()
+                            ->color(fn (string $state): string => match ($state) {
+                                'Aktif' => 'success',
+                                'Draft' => 'gray',
+                                'Belum Diverifikasi' => 'warning',
+                                'Dalam Revisi' => 'danger',
+                                default => 'info',
+                            }),
+                    ])->columns(2),
+
+                // --- TANGGAL PENTING ---
+                Infolists\Components\Section::make('Detail Tanggal')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('tgl_pengesahan')
+                            ->label('Tanggal Disahkan')
+                            ->date(),
+                        
+                        Infolists\Components\TextEntry::make('tgl_berlaku')
+                            ->label('Tanggal Berlaku (TMT)')
+                            ->date(),
+                        
+                        Infolists\Components\TextEntry::make('tgl_kadaluwarsa')
+                            ->label('Berlaku Sampai')
+                            ->date()
+                            ->color('danger'),
+                            
+                        Infolists\Components\TextEntry::make('tgl_review_tahunan')
+                            ->label('Jadwal Review')
+                            ->date(),
+                    ])->columns(4),
+                
+                // --- TAMBAHAN BARU: SECTION UNIT TERKAIT (SOP AP) ---
+                Infolists\Components\Section::make('Keterkaitan Unit (SOP AP)')
+                    // ->icon('heroicon-m-link')
+                    // LOGIC 1: Hanya tampil jika Kategori = SOP AP
+                    ->visible(fn (Sop $record) => $record->kategori_sop === 'SOP AP') 
+                    ->schema([
+                        // Tampilkan status apakah Semua Unit atau Unit Spesifik
+                        Infolists\Components\TextEntry::make('is_all_units')
+                            ->label('Cakupan Keterkaitan')
+                            ->formatStateUsing(fn (bool $state) => $state ? 'Seluruh Unit Kerja' : 'Unit Kerja Spesifik')
+                            ->badge()
+                            ->color(fn (bool $state) => $state ? 'danger' : 'primary')
+                            ->icon(fn (bool $state) => $state ? 'heroicon-m-globe-alt' : 'heroicon-m-users'),
+
+                        // LOGIC 2: List Unit (Hanya muncul jika BUKAN Semua Unit)
+                        Infolists\Components\TextEntry::make('unitTerkait.nama_unit')
+                            ->label('Daftar Unit Terkait')
+                            ->listWithLineBreaks()
+                            ->bulleted() 
+                            ->visible(fn (Sop $record) => ! $record->is_all_units) // Sembunyikan jika is_all_units = true
+                            // ->columnSpanFull()
+                            ->placeholder('Belum ada unit terkait yang dipilih'),
+                    ])->columns(2),
+                // -----------------------------------------------------
+
+                // --- ISI & PREVIEW DOKUMEN ---
+                Infolists\Components\Section::make('Isi & Lampiran')
+                    ->schema([
+                        // --- PDF VIEWER (IFRAME) ---
+                        PdfViewerEntry::make('dokumen_path')
+                            ->label('Pratinjau Dokumen')
+                            ->minHeight('80svh') // Tinggi viewer (80% layar)
+                            ->fileUrl(fn ($record) => asset('storage/' . $record->dokumen_path))
+                            ->columnSpanFull(),
+                    ]),
+            ]);
+    }
 
     public static function getRelations(): array
     {
