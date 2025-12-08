@@ -180,10 +180,32 @@ class SopResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('judul_sop')->limit(30)->searchable(),
-                Tables\Columns\TextColumn::make('nomor_sop')->label('No. Dokumen'),
-                Tables\Columns\TextColumn::make('kategori_sop')->badge(),
+                Tables\Columns\TextColumn::make('judul_sop')
+                    ->limit(30)
+                    ->searchable()
+                    ->sortable()
+                    ->label('Judul SOP'),
+                // Tables\Columns\TextColumn::make('nomor_sop')->label('No. Dokumen'),
+                Tables\Columns\TextColumn::make('kategori_sop')
+                    ->badge()
+                    ->label('Kategori SOP')
+                    ->sortable()
+                    ->color(fn (string $state): string => match ($state) {
+                    'SOP Internal' => 'success',
+                    'SOP AP' => 'info',
+                }),
+                Tables\Columns\TextColumn::make('tgl_berlaku')
+                    ->date()
+                    ->sortable()
+                    ->label('Tanggal Berlaku'),
+                Tables\Columns\TextColumn::make('tgl_kadaluwarsa')
+                    ->date()
+                    ->sortable()
+                    ->label('Tanggal Kadaluwarsa'),
                 Tables\Columns\TextColumn::make('status.nama_status')
+                    ->label('Status')
+                    ->sortable()
+                    ->searchable()
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Aktif' => 'success',
@@ -192,10 +214,9 @@ class SopResource extends Resource
                         'Dalam Revisi' => 'danger',
                         default => 'info',
                     }),
-                Tables\Columns\TextColumn::make('tgl_berlaku')->date()->label('TMT'),
-                Tables\Columns\TextColumn::make('tgl_kadaluwarsa')->date()->label('Expired'),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(), // Tombol Lihat Detail (View Only)
                 Tables\Actions\EditAction::make(),
             ]);
     }

@@ -2,13 +2,14 @@
 
 namespace App\Filament\Pengusul\Resources\SopResource\Pages;
 
-use App\Filament\Pengusul\Resources\SopResource;
 use App\Models\Sop;
-use App\Models\Notifikasi; // Pastikan model notifikasi diimport
 use Filament\Actions;
+use Filament\Pages\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Notifications\Actions\Action as NotifAction;
 use Filament\Resources\Pages\EditRecord;
+use App\Filament\Pengusul\Resources\SopResource;
+use Filament\Notifications\Actions\Action as NotifAction;
+use App\Models\Notifikasi; // Pastikan model notifikasi diimport
 
 class EditSop extends EditRecord
 {
@@ -97,36 +98,38 @@ class EditSop extends EditRecord
     }
 
     // --- 3. NOTIFIKASI SETELAH SIMPAN ---
-    protected function afterSave(): void
-    {
-        $sop = $this->record;
+    // protected function afterSave(): void
+    // {
+    //     $sop = $this->record;
         
-        // Hanya kirim notif jika statusnya "Belum Diverifikasi"
-        if ($sop->id_status == Sop::STATUS_BELUM_DIVERIFIKASI) {
-            $verifikators = Sop::getVerifikators();
+    //     // Hanya kirim notif jika statusnya "Belum Diverifikasi"
+    //     if ($sop->id_status == Sop::STATUS_BELUM_DIVERIFIKASI) {
+    //         $verifikators = Sop::getVerifikators();
             
-            foreach ($verifikators as $verifikator) {
-                // 1. Simpan ke Database Custom (tb_notifikasi)
-                Notifikasi::create([
-                    'id_user'   => $verifikator->id_user,
-                    'id_sop'    => $sop->id_sop,
-                    'judul'     => 'Revisi SOP Masuk',
-                    'isi_notif' => "SOP '{$sop->judul_sop}' telah diperbarui dan menunggu verifikasi.",
-                    'is_read'   => false,
-                    'created_by'=> auth()->user()->nama_lengkap,
-                ]);
+    //         foreach ($verifikators as $verifikator) {
+    //             // 1. Simpan ke Database Custom (tb_notifikasi)
+    //             Notifikasi::create([
+    //                 'id_user'   => $verifikator->id_user,
+    //                 'id_sop'    => $sop->id_sop,
+    //                 'judul'     => 'Revisi SOP Masuk',
+    //                 'isi_notif' => "SOP '{$sop->judul_sop}' telah diperbarui dan menunggu verifikasi.",
+    //                 'is_read'   => false,
+    //                 'created_by'=> auth()->user()->nama_lengkap,
+    //             ]);
 
-                // 2. Kirim Notifikasi Lonceng (Realtime Polling)
-                Notification::make()
-                    ->title('Revisi SOP Masuk')
-                    ->body("SOP '{$sop->judul_sop}' telah diperbarui dan menunggu verifikasi.")
-                    ->warning()
-                    ->actions([
-                        NotifAction::make('view')
-                            ->url('/admin/sops/' . $sop->id_sop . '/edit') // Sesuaikan URL Admin
-                    ])
-                    ->sendToDatabase($verifikator);
-            }
-        }
-    }
+    //             // 2. Kirim Notifikasi Lonceng (Realtime Polling)
+    //             Notification::make()
+    //                 ->title('Revisi SOP Masuk')
+    //                 ->body("SOP '{$sop->judul_sop}' telah diperbarui oleh pengusul.")
+    //                 ->warning() // Warna kuning/orange
+    //                 ->actions([
+    //                     Action::make('view')
+    //                         ->label('Periksa')
+    //                         ->url('/admin/sops/' . $sop->id_sop . '/edit')
+    //                         ->markAsRead(),
+    //                 ])
+    //                 ->sendToDatabase($verifikator);
+    //         }
+    //     }
+    // }
 }

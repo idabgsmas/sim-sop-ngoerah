@@ -3,15 +3,18 @@
 namespace App\Models;
 
 use Filament\Panel;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Filament\Models\Contracts\HasName;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Notifications\HasDatabaseNotifications;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Filament\Models\Contracts\FilamentUser; // Penting untuk Filament
-use Filament\Models\Contracts\HasName;
+
 
 class TbUser extends Authenticatable implements FilamentUser, HasName
 {
     use Notifiable, SoftDeletes;
+    use HasDatabaseNotifications;
 
     protected $table = 'tb_user';       // Custom Table Name
     protected $primaryKey = 'id_user';  // Custom PK

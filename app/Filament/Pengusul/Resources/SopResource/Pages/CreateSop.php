@@ -50,6 +50,8 @@ class CreateSop extends CreateRecord
         $data['id_status'] = Sop::STATUS_BELUM_DIVERIFIKASI;
         
         return $data;
+
+        $this->redirect($this->getResource()::getUrl('index'));
     }
 
     // Tombol Draft
@@ -79,38 +81,42 @@ class CreateSop extends CreateRecord
                 $this->record = $this->handleRecordCreation($data);
                 $this->form->model($this->record)->saveRelationships();
                 
-                Notification::make()->title('Draft Disimpan')->success()->send();
+                Notification::make()->title('Draft SOP Disimpan')->success()->send();
                 $this->redirect($this->getResource()::getUrl('index'));
             });
     }
 
-    // Notifikasi
-    protected function afterCreate(): void
-    {
-        $sop = $this->record;
-        if ($sop->id_status == Sop::STATUS_BELUM_DIVERIFIKASI) {
-            $verifikators = Sop::getVerifikators();
+    // // Notifikasi
+    // protected function afterCreate(): void
+    // {
+    //     $sop = $this->record;
+    //     if ($sop->id_status == Sop::STATUS_BELUM_DIVERIFIKASI) {
+    //         $verifikators = Sop::getVerifikators();
             
-            foreach ($verifikators as $verifikator) {
-                // DB Custom
-                Notifikasi::create([
-                    'id_user'   => $verifikator->id_user,
-                    'id_sop'    => $sop->id_sop,
-                    'judul'     => 'Pengajuan SOP Baru',
-                    'isi_notif' => "SOP '{$sop->judul_sop}' diajukan oleh unit " . auth()->user()->unitKerja->first()->nama_unit,
-                    'is_read'   => false,
-                    'created_by'=> auth()->user()->nama_lengkap,
-                ]);
+    //         foreach ($verifikators as $verifikator) {
+    //             // DB Custom
+    //             Notifikasi::create([
+    //                 'id_user'   => $verifikator->id_user,
+    //                 'id_sop'    => $sop->id_sop,
+    //                 'judul'     => 'Pengajuan SOP Baru',
+    //                 'isi_notif' => "SOP '{$sop->judul_sop}' diajukan oleh unit " . auth()->user()->unitKerja->first()->nama_unit,
+    //                 'is_read'   => false,
+    //                 'created_by'=> auth()->user()->nama_lengkap,
+    //             ]);
 
-                // Lonceng
-                Notification::make()
-                    ->title('Pengajuan SOP Baru')
-                    ->body("SOP '{$sop->judul_sop}' menunggu verifikasi.")
-                    ->actions([
-                        NotifAction::make('view')->url('/admin/sops/' . $sop->id_sop . '/edit')
-                    ])
-                    ->sendToDatabase($verifikator);
-            }
-        }
-    }
+    //             // Lonceng
+    //             Notification::make()
+    //                 ->title('Pengajuan SOP Baru')
+    //                 ->body("SOP '{$sop->judul_sop}' menunggu verifikasi.")
+    //                 ->icon('heroicon-o-document-plus') 
+    //                 ->actions([
+    //                     NotifAction::make('view')
+    //                         ->url('/admin/sops/' . $sop->id_sop . '/edit')
+    //                         ->label('Lihat SOP')
+    //                         ->markAsRead(),
+    //                 ])
+    //                 ->sendToDatabase($verifikator);
+    //         }
+    //     }
+    // }
 }

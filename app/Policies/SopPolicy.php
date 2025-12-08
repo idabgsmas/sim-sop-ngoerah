@@ -13,9 +13,9 @@ class SopPolicy
      */
     public function viewAny(TbUser $user): bool
     {
-        // Izinkan Admin, Verifikator, dan Pengusul untuk melihat menu
+        // Izinkan Verifikator, dan Pengusul untuk melihat menu
         // Sesuaikan string role ini dengan data di tabel tb_role Anda
-        return in_array($user->role->nama_role, ['Pengusul']);
+        return in_array($user->role->nama_role, ['Pengusul','Verifikator', 'Viewer']);
         // return true;
     }
 
