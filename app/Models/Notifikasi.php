@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class TbNotifikasi extends Model
+class Notifikasi extends Model
 {
     protected $table = 'tb_notifikasi';
     protected $primaryKey = 'id_notifikasi';
-    protected $guarded = ['id_user', 'id_sop', 'judul', 'isi_notif', 'is_read'];
+    protected $fillable = ['id_user', 'id_sop', 'judul', 'isi_notif', 'is_read'];
 
     protected $casts = [
         'is_read' => 'boolean',

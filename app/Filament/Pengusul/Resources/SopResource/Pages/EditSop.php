@@ -4,29 +4,58 @@ namespace App\Filament\Pengusul\Resources\SopResource\Pages;
 
 use App\Filament\Pengusul\Resources\SopResource;
 use App\Models\Sop;
+use App\Models\Notifikasi; // Pastikan model notifikasi diimport
 use Filament\Actions;
 use Filament\Notifications\Notification;
+use Filament\Notifications\Actions\Action as NotifAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Database\Eloquent\Model;
 
 class EditSop extends EditRecord
 {
     protected static string $resource = SopResource::class;
 
-    // --- PERBAIKAN DI SINI ---
     protected function getFormActions(): array
     {
         return [
-            // Gunakan getSaveFormAction(), bukan getSaveAction()
+            // Tombol Kirim Standar (Memicu mutateFormDataBeforeSave)
             $this->getSaveFormAction()
                 ->label('Kirim Perbaikan & Ajukan Verifikasi'),
             
+            // Tombol Draft Custom
             $this->getSimpanDraftAction(),
             $this->getCancelFormAction(),
         ];
     }
-    // -------------------------
 
+    // --- 1. LOGIKA TOMBOL KIRIM (STANDARD SAVE) ---
+    // Metode ini otomatis jalan saat tombol "Kirim Perbaikan" ditekan
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // Validasi Manual: Pastikan semua data lengkap sebelum dikirim
+        $this->validate([
+            'data.judul_sop'        => 'required',
+            'data.nomor_sop'        => 'required',
+            'data.kategori_sop'     => 'required',
+            'data.dokumen_path'     => 'required',
+            
+            // Sesuai nama kolom di database Anda
+            'data.tgl_pengesahan'   => 'required', 
+            'data.tgl_berlaku'      => 'required',
+            'data.tgl_review_tahunan' => 'required',
+            'data.deskripsi'        => 'required', 
+        ]);
+
+        // PAKSA ubah status jadi "Belum Diverifikasi" (ID 2)
+        // Tidak peduli status sebelumnya apa, kalau dikirim, berarti minta verifikasi
+        $data['id_status'] = Sop::STATUS_BELUM_DIVERIFIKASI;
+
+        // Redirect ke index
+        $this->redirect($this->getResource()::getUrl('index'));
+
+        return $data;
+    }
+
+    // --- 2. LOGIKA TOMBOL DRAFT (CUSTOM) ---
     protected function getSimpanDraftAction(): Actions\Action
     {
         return Actions\Action::make('save_draft')
@@ -35,7 +64,7 @@ class EditSop extends EditRecord
             ->action(function () {
                 $data = $this->form->getState();
 
-                // Logic bongkar array file
+                // Logic bongkar array file jika Filament membungkusnya
                 if (isset($data['dokumen_path'])) {
                     while (is_array($data['dokumen_path'])) {
                         if (empty($data['dokumen_path'])) {
@@ -46,56 +75,58 @@ class EditSop extends EditRecord
                     }
                 }
                 
+                // Bersihkan relasi many-to-many dari data insert utama
                 if (isset($data['unitTerkait'])) {
                     unset($data['unitTerkait']);
                 }
                 
+                // Set Status ke DRAFT (ID 1)
                 $data['id_status'] = Sop::STATUS_DRAFT;
                 
-                // Gunakan logic update bawaan tapi dengan data yang sudah dimodifikasi
-                $this->handleRecordUpdate($this->record, $data);
+                // Update Record secara manual (BYPASS validasi mutateFormDataBeforeSave)
+                $this->record->update($data);
+                
+                // Simpan Relasi
                 $this->form->model($this->record)->saveRelationships();
                 
                 Notification::make()->title('Draft Disimpan')->success()->send();
+                
+                // Redirect ke index
                 $this->redirect($this->getResource()::getUrl('index'));
             });
     }
 
-    protected function handleRecordUpdate(Model $record, array $data): Model
-    {
-        // Jika bukan draft, berarti user menekan tombol Kirim/Save utama
-        // Maka lakukan validasi manual dan ubah status
-        if (!isset($data['id_status']) || $data['id_status'] != Sop::STATUS_DRAFT) {
-            
-            // Validasi Manual (Karena di form schema kita buat nullable)
-            $this->validate([
-                'data.judul_sop' => 'required',
-                'data.nomor_sop' => 'required',
-                'data.kategori_sop' => 'required'   ,
-                'data.dokumen_path' => 'required',
-                'data.tgl_pengesahan' => 'required',
-                'data.tgl_berlaku' => 'required',
-            ]);
-            
-            $data['id_status'] = Sop::STATUS_BELUM_DIVERIFIKASI;
-        }
-
-        $record->update($data);
-        return $record;
-    }
-
+    // --- 3. NOTIFIKASI SETELAH SIMPAN ---
     protected function afterSave(): void
     {
         $sop = $this->record;
         
-        // Notif hanya jika status 'Belum Diverifikasi' (Bukan Draft)
+        // Hanya kirim notif jika statusnya "Belum Diverifikasi"
         if ($sop->id_status == Sop::STATUS_BELUM_DIVERIFIKASI) {
             $verifikators = Sop::getVerifikators();
-            Notification::make()
-                ->title('Pengajuan SOP Baru')
-                ->body("SOP '{$sop->judul_sop}' diajukan oleh unit " . auth()->user()->unitKerja->first()->nama_unit . " dan menunggu verifikasi.")
-                // ->body("SOP '{$sop->judul_sop}' telah diperbarui dan menunggu verifikasi.")
-                ->sendToDatabase($verifikators);
+            
+            foreach ($verifikators as $verifikator) {
+                // 1. Simpan ke Database Custom (tb_notifikasi)
+                Notifikasi::create([
+                    'id_user'   => $verifikator->id_user,
+                    'id_sop'    => $sop->id_sop,
+                    'judul'     => 'Revisi SOP Masuk',
+                    'isi_notif' => "SOP '{$sop->judul_sop}' telah diperbarui dan menunggu verifikasi.",
+                    'is_read'   => false,
+                    'created_by'=> auth()->user()->nama_lengkap,
+                ]);
+
+                // 2. Kirim Notifikasi Lonceng (Realtime Polling)
+                Notification::make()
+                    ->title('Revisi SOP Masuk')
+                    ->body("SOP '{$sop->judul_sop}' telah diperbarui dan menunggu verifikasi.")
+                    ->warning()
+                    ->actions([
+                        NotifAction::make('view')
+                            ->url('/admin/sops/' . $sop->id_sop . '/edit') // Sesuaikan URL Admin
+                    ])
+                    ->sendToDatabase($verifikator);
+            }
         }
     }
 }

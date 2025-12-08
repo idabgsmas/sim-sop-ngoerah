@@ -3,40 +3,56 @@
 namespace App\Filament\Pengusul\Resources\SopResource\Pages;
 
 use App\Filament\Pengusul\Resources\SopResource;
-use Filament\Actions;
-use Filament\Resources\Pages\CreateRecord;
 use App\Models\Sop;
+use App\Models\Notifikasi;
+use Filament\Actions;
 use Filament\Notifications\Notification;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Notifications\Actions\Action as NotifAction;
+use Filament\Resources\Pages\CreateRecord;
 
 class CreateSop extends CreateRecord
 {
     protected static string $resource = SopResource::class;
 
-    // 1. Hilangkan tombol "Create" & "Create & Create Another" bawaan
     protected function getFormActions(): array
     {
         return [
-            $this->getKirimAction(),       // Tombol Utama (Kirim)
-            $this->getSimpanDraftAction(), // Tombol Kedua (Draft)
-            $this->getCancelFormAction(),  // Tombol Batal
+            $this->getKirimAction(),
+            $this->getSimpanDraftAction(),
+            $this->getCancelFormAction(),
         ];
     }
 
-    // 2. Logic Tombol "Kirim" (Validasi Ketat)
+    // Tombol Kirim (Hanya Submit, logic di mutateFormDataBeforeCreate)
     protected function getKirimAction(): Actions\Action
     {
         return Actions\Action::make('create')
             ->label('Kirim & Ajukan Verifikasi')
-            ->submit('create')
+            ->submit('create') 
             ->keyBindings(['mod+s'])
-            ->color('primary')
-            ->action(function () {
-                $this->create(another: false); // Panggil fungsi create standard
-            });
+            ->color('primary');
     }
 
-    // 3. Logic Tombol "Simpan Draft" (Validasi Longgar)
+    // Validasi & Status sebelum Create
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $this->validate([
+            'data.judul_sop'        => 'required',
+            'data.nomor_sop'        => 'required',
+            'data.kategori_sop'     => 'required',
+            'data.dokumen_path'     => 'required',
+            'data.tgl_pengesahan'   => 'required', 
+            'data.tgl_berlaku'      => 'required',
+            'data.tgl_review_tahunan' => 'required',
+            'data.deskripsi'        => 'required',
+        ]);
+
+        $data['id_status'] = Sop::STATUS_BELUM_DIVERIFIKASI;
+        
+        return $data;
+    }
+
+    // Tombol Draft
     protected function getSimpanDraftAction(): Actions\Action
     {
         return Actions\Action::make('save_draft')
@@ -45,81 +61,56 @@ class CreateSop extends CreateRecord
             ->action(function () {
                 $data = $this->form->getState();
                 
-                // --- PERBAIKAN: PAKSA BONGKAR ARRAY SAMPAI JADI STRING ---
                 if (isset($data['dokumen_path'])) {
-                    // Selama dia masih array, ambil elemen pertamanya terus menerus
                     while (is_array($data['dokumen_path'])) {
+                        if (empty($data['dokumen_path'])) {
+                            $data['dokumen_path'] = null;
+                            break;
+                        }
                         $data['dokumen_path'] = reset($data['dokumen_path']);
                     }
                 }
-                // ---------------------------------------------------------
 
-                // Hapus unitTerkait agar tidak error saat insert ke tb_sop
-                if (isset($data['unitTerkait'])) {
-                    unset($data['unitTerkait']);
-                }
+                if (isset($data['unitTerkait'])) unset($data['unitTerkait']);
                 
-                // Set Status Draft
                 $data['id_status'] = Sop::STATUS_DRAFT; 
 
-                // Simpan Record
+                // Bypass dengan handleRecordCreation manual
                 $this->record = $this->handleRecordCreation($data);
                 $this->form->model($this->record)->saveRelationships();
                 
-                Notification::make()
-                    ->title('Disimpan sebagai Draft')
-                    ->success()
-                    ->send();
-
+                Notification::make()->title('Draft Disimpan')->success()->send();
                 $this->redirect($this->getResource()::getUrl('index'));
             });
     }
 
-    // 4. Intercept proses Create standard untuk set Status "Belum Diverifikasi" + Validasi Manual
-    protected function handleRecordCreation(array $data): Model
-    {
-        // Jika tombol yang ditekan adalah 'create' (Kirim), status = Belum Diverifikasi
-        // Jika draft, status sudah diset di action draft di atas.
-        
-        // Cek status, jika bukan draft, berarti sedang submit
-        if (!isset($data['id_status']) || $data['id_status'] != Sop::STATUS_DRAFT) {
-            
-            // Lakukan VALIDASI MANUAL di sini karena di Form Schema kita buat nullable
-            $this->validate([
-                'data.judul_sop' => 'required',
-                'data.nomor_sop' => 'required',
-                'data.kategori_sop' => 'required'   ,
-                'data.dokumen_path' => 'required',
-                'data.tgl_pengesahan' => 'required',
-                'data.tgl_berlaku' => 'required',
-            ]);
-            
-            // Set Status ke BELUM DIVERIFIKASI (ID 2)
-            $data['id_status'] = Sop::STATUS_BELUM_DIVERIFIKASI; 
-        }
-
-        return parent::handleRecordCreation($data);
-    }
-    
-    // 5. Notifikasi ke Verifikator setelah Create
+    // Notifikasi
     protected function afterCreate(): void
     {
         $sop = $this->record;
-
-        // Hanya kirim notifikasi jika status bukan Draft
         if ($sop->id_status == Sop::STATUS_BELUM_DIVERIFIKASI) {
+            $verifikators = Sop::getVerifikators();
             
-            $verifikators = Sop::getVerifikators(); // Ambil list verifikator
-            
-            Notification::make()
-                ->title('Pengajuan SOP Baru')
-                ->body("SOP '{$sop->judul_sop}' diajukan oleh unit " . auth()->user()->unitKerja->first()->nama_unit)
-                ->actions([
-                    Actions\Action::make('view')
-                        ->url('/admin/sops/' . $sop->id_sop) // URL Verifikator (Panel Admin)
-                        ->button(),
-                ])
-                ->sendToDatabase($verifikators); // Kirim notif database
+            foreach ($verifikators as $verifikator) {
+                // DB Custom
+                Notifikasi::create([
+                    'id_user'   => $verifikator->id_user,
+                    'id_sop'    => $sop->id_sop,
+                    'judul'     => 'Pengajuan SOP Baru',
+                    'isi_notif' => "SOP '{$sop->judul_sop}' diajukan oleh unit " . auth()->user()->unitKerja->first()->nama_unit,
+                    'is_read'   => false,
+                    'created_by'=> auth()->user()->nama_lengkap,
+                ]);
+
+                // Lonceng
+                Notification::make()
+                    ->title('Pengajuan SOP Baru')
+                    ->body("SOP '{$sop->judul_sop}' menunggu verifikasi.")
+                    ->actions([
+                        NotifAction::make('view')->url('/admin/sops/' . $sop->id_sop . '/edit')
+                    ])
+                    ->sendToDatabase($verifikator);
+            }
         }
     }
 }
