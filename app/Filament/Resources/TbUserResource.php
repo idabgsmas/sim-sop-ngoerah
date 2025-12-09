@@ -10,6 +10,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Hash;
@@ -72,15 +74,38 @@ class TbUserResource extends Resource
                     ->label('Direktorat (Opsional)')
                     ->helperText('Diisi jika user mewakili direktorat tertentu')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->Live()
+                    ->afterStateUpdated(function (Set $set) {
+                        // 2. Jika Direktorat berubah, kosongkan pilihan Unit Kerja agar tidak nyangkut data lama
+                        $set('unitKerja', []); 
+                    }),
                 
                 // Relasi Many-to-Many ke Unit Kerja
                 Forms\Components\Select::make('unitKerja') // Nama relasi di model TbUser
-                    ->relationship('unitKerja', 'nama_unit')
+                    ->relationship(
+                        name: 'unitKerja', 
+                        titleAttribute: 'nama_unit',
+                        modifyQueryUsing: function (Builder $query, Get $get) {
+                            // 3. Ambil ID Direktorat yang sedang dipilih
+                            $direktoratId = $get('id_direktorat');
+
+                            // 4. Jika Direktorat belum dipilih, jangan tampilkan unit apapun (atau tampilkan semua, tergantung selera)
+                            if (! $direktoratId) {
+                                // Opsional: return $query->whereNull('id_unit_kerja'); // Kosongkan list
+                                return $query; // Atau biarkan tampil semua
+                            }
+
+                            // 5. Filter Unit berdasarkan id_direktorat
+                            return $query->where('id_direktorat', $direktoratId);
+                        }
+                    )
                     // ->multiple() // Bisa pilih banyak unit
                     ->preload()
                     ->searchable()
-                    ->label('Penugasan Unit Kerja'),
+                    ->label('Penugasan Unit Kerja')
+                    // Tambahkan kondisi: Field ini hanya aktif jika Direktorat sudah dipilih (Opsional, UX lebih baik)
+                    ->disabled(fn (Get $get) => ! $get('id_direktorat')),
                     
                 Forms\Components\Toggle::make('is_active')
                     ->label('Status Aktif')

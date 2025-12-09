@@ -99,7 +99,27 @@ class SopResource extends Resource
                                 'SOP AP' => 'SOP AP (Antar Profesi / Unit Lain)',
                             ])
                             ->live() // Live update untuk memunculkan form di bawahnya
-                            ->afterStateUpdated(fn (Set $set) => $set('is_all_units', false))
+                            ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
+                                // 1. Reset toggle 'Semua Unit' jika kategori berubah
+                                $set('is_all_units', false);
+
+                                // 2. LOGIKA OTOMATIS PILIH UNIT PENGUSUL
+                                // Jika user memilih 'SOP AP', otomatis masukkan unit user login ke field 'unitTerkait'
+                                if ($state === 'SOP AP') {
+                                    // Ambil data yang sudah terpilih saat ini (jika ada)
+                                    $currentUnits = $get('unitTerkait') ?? [];
+                                    
+                                    // Ambil ID Unit Kerja milik User yang sedang login
+                                    $myUnitIds = Auth::user()->unitKerja->pluck('id_unit_kerja')->toArray();
+                                    
+                                    // Gabungkan unit yang sudah ada dengan unit saya (agar tidak menimpa data lama jika diedit)
+                                    // array_unique memastikan tidak ada ID ganda
+                                    $mergedUnits = array_unique(array_merge($currentUnits, $myUnitIds));
+                                    
+                                    // Set nilai ke field unitTerkait
+                                    $set('unitTerkait', $mergedUnits);
+                                }
+                            })
                             ->columnSpanFull(), 
 
                         Forms\Components\Group::make()
@@ -115,6 +135,11 @@ class SopResource extends Resource
                                     ->preload()
                                     ->searchable()
                                     ->label('Pilih Unit Terkait')
+                                    // Otomatis pilih unit kerja milik user yang sedang login saat form dibuka (hanya saat Create)
+                                    ->default(function () {
+                                        // Ambil ID semua unit kerja milik user login
+                                        return Auth::user()->unitKerja->pluck('id_unit_kerja')->toArray();
+                                    })
                                     ->hidden(fn (Get $get) => $get('is_all_units') === true) // Sembunyikan jika All Units
                                     ->columnSpanFull(),
                             ])
@@ -250,8 +275,17 @@ class SopResource extends Resource
         ])
         
             ->actions([
-                Tables\Actions\ViewAction::make(), // Tombol Lihat Detail (View Only)
-                Tables\Actions\EditAction::make(),
+                // Tombol View (Bisa dilihat oleh semua yang muncul di list)
+                Tables\Actions\ViewAction::make(),
+                // Tombol Edit (Hanya muncul jika SOP ini MILIK Unit User)
+                Tables\Actions\EditAction::make()
+                    ->visible(function (Sop $record) {
+                        $user = Auth::user();
+                        $myUnitIds = $user->unitKerja->pluck('id_unit_kerja')->toArray();
+                        
+                        // Logic: Tampilkan tombol Edit HANYA JIKA id_unit_kerja SOP ini termasuk dalam unit saya
+                        return in_array($record->id_unit_kerja, $myUnitIds);
+                    }),
             ]);
     }
 
@@ -361,6 +395,35 @@ class SopResource extends Resource
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $user = Auth::user();
+        
+        // 1. Ambil ID Unit Kerja user yang sedang login (bisa lebih dari satu)
+        // Pastikan relasi 'unitKerja' di model TbUser sudah benar (belongsToMany)
+        $myUnitIds = $user->unitKerja->pluck('id_unit_kerja')->toArray();
+
+        return parent::getEloquentQuery()
+            ->where(function ($query) use ($myUnitIds) {
+                // SKENARIO A: Tampilkan SOP milik Unit Saya (Apapun statusnya: Draft, Revisi, Aktif, dll)
+                $query->whereIn('id_unit_kerja', $myUnitIds)
+                
+                // SKENARIO B: Tampilkan SOP Unit Lain (SOP AP)
+                ->orWhere(function ($q) use ($myUnitIds) {
+                    $q->where('kategori_sop', 'SOP AP') // Wajib SOP AP
+                    ->where('id_status', 4)           // Wajib Status AKTIF (ID 4)
+                    ->where(function ($sub) use ($myUnitIds) {
+                        // Sub-kondisi: Apakah terkait dengan unit saya?
+                        $sub->where('is_all_units', true) // Jika dicentang "Semua Unit"
+                            ->orWhereHas('unitTerkait', function ($rel) use ($myUnitIds) {
+                                // Atau ID unit saya ada di tabel pivot unitTerkait
+                                $rel->whereIn('tb_unit_kerja.id_unit_kerja', $myUnitIds);
+                            });
+                    });
+                });
+            });
     }
 
     public static function getPages(): array
