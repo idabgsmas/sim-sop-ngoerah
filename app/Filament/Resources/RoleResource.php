@@ -33,10 +33,15 @@ class RoleResource extends Resource
         return $form
             ->schema([
                 Forms\Components\TextInput::make('nama_role')
-                ->required()
-                ->maxLength(50)
-                ->unique(ignoreRecord: true) // Pastikan nama role unik
-                ->label('Nama Role'),
+                    ->required()
+                    ->maxLength(50)
+                    ->unique(ignoreRecord: true) // Pastikan nama role unik
+                    ->label('Nama Role'),
+
+                Forms\Components\Textarea::make('deskripsi_role')
+                    ->label('Deskripsi Role')
+                    ->maxLength(255)
+                    ->nullable(),
             ]);
     }
 
@@ -45,14 +50,20 @@ class RoleResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id_role')
-                ->searchable()
-                ->label('ID Role')
-                ->sortable(),
+                    ->searchable()
+                    ->label('ID Role')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('nama_role')
-                ->searchable()
-                ->label('Nama Role')
-                ->sortable(),
+                    ->searchable()
+                    ->label('Nama Role')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('deskripsi_role')
+                    ->label('Deskripsi Role')
+                    ->limit(50)
+                    ->sortable(),
+
             ])
             ->filters([
                 //

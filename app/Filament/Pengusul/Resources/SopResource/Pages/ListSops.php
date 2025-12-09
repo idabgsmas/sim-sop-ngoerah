@@ -14,7 +14,8 @@ class ListSops extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-            ->label('Tambah SOP Baru'),
+            ->label('Tambah SOP Baru')
+            ->icon('heroicon-o-document-plus'),
         ];
     }
 }

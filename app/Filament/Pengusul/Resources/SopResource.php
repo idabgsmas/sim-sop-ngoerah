@@ -218,7 +218,37 @@ class SopResource extends Resource
                         'Dalam Revisi' => 'danger',
                         default => 'info',
                     }),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Dibuat')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Diperbarui')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('deleted_at')
+                    ->label('Dihapus')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
+
+            ->filters([
+                Tables\Filters\SelectFilter::make('kategori_sop')
+                    ->options([
+                        'SOP Internal' => 'SOP Internal',
+                        'SOP AP' => 'SOP AP',
+                    ])
+                    //   ->relationship('kategoriSop', 'nama_kategori_sop')
+                    ->label('Filter Kategori SOP'),
+                Tables\Filters\SelectFilter::make('id_status')
+                    ->relationship('status', 'nama_status')
+                    ->label('Filter Status SOP'),
+                Tables\Filters\TrashedFilter::make(),
+        ])
+        
             ->actions([
                 Tables\Actions\ViewAction::make(), // Tombol Lihat Detail (View Only)
                 Tables\Actions\EditAction::make(),

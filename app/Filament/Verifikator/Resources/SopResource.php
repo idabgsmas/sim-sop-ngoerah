@@ -75,6 +75,7 @@ class SopResource extends Resource
                 ->sortable(),
             Tables\Columns\TextColumn::make('status.nama_status')
                 ->label('Status')
+                ->sortable()
                 ->badge()
                 ->color(fn (string $state): string => match ($state) {
                     'Aktif' => 'success',
@@ -83,11 +84,32 @@ class SopResource extends Resource
                     'Dalam Revisi' => 'danger',
                     default => 'info',
                 }),
+            Tables\Columns\TextColumn::make('created_at')
+                  ->label('Dibuat')
+                ->dateTime()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
+            Tables\Columns\TextColumn::make('updated_at')
+                ->label('Diperbarui')
+                ->dateTime()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
+            Tables\Columns\TextColumn::make('deleted_at')
+                ->label('Dihapus')
+                ->dateTime()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
             
         ])
 
         ->filters([
-            //
+            Tables\Filters\SelectFilter::make('id_unit_kerja')
+                    ->relationship('unitKerja', 'nama_unit')
+                    ->label('Filter Unit Kerja'),
+            Tables\Filters\SelectFilter::make('unitKerja.direktorat.nama_direktorat')
+                    ->relationship('unitKerja.direktorat', 'nama_direktorat')
+                    ->label('Filter Direktorat'),
+            Tables\Filters\TrashedFilter::make(),
         ])
 
         ->actions([

@@ -77,7 +77,7 @@ class TbUserResource extends Resource
                 // Relasi Many-to-Many ke Unit Kerja
                 Forms\Components\Select::make('unitKerja') // Nama relasi di model TbUser
                     ->relationship('unitKerja', 'nama_unit')
-                    ->multiple() // Bisa pilih banyak unit
+                    // ->multiple() // Bisa pilih banyak unit
                     ->preload()
                     ->searchable()
                     ->label('Penugasan Unit Kerja'),
@@ -126,10 +126,32 @@ class TbUserResource extends Resource
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean()
                     ->label('Status Pengguna'),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Dibuat')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Diperbarui')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('deleted_at')
+                    ->label('Dihapus')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('id_role')
-                    ->relationship('role', 'nama_role'),
+                    ->relationship('role', 'nama_role')
+                    ->label('Filter Role'),
+                Tables\Filters\SelectFilter::make('unitKerja.nama_unit')
+                    ->relationship('unitKerja', 'nama_unit')
+                    ->label('Filter Unit Kerja'),
+                Tables\Filters\SelectFilter::make('direktorat.nama_direktorat')
+                    ->relationship('direktorat', 'nama_direktorat')
+                    ->label('Filter Direktorat'),
                 Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([

@@ -14,7 +14,8 @@ class ListUnitKerjas extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Tambah Unit Kerja Baru'),
+                ->label('Tambah Unit Kerja Baru')
+                ->icon('heroicon-o-plus'),
         ];
     }
 }

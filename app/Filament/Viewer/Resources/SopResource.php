@@ -48,7 +48,7 @@ class SopResource extends Resource
                 ->label('Judul SOP')
                 ->searchable()
                 ->sortable(),
-            Tables\Columns\TextColumn::make('direktorat.nama_direktorat')
+            Tables\Columns\TextColumn::make('unitKerja.direktorat.nama_direktorat')
                 ->label('Direktorat')
                 ->searchable()
                 ->sortable(),
@@ -65,6 +65,17 @@ class SopResource extends Resource
                 ->label('Tanggal Kadaluarsa')
                 ->sortable(),
         ])
+
+        ->filters([
+            Tables\Filters\SelectFilter::make('unitKerja.direktorat.nama_direktorat')
+                    ->relationship('unitKerja.direktorat', 'nama_direktorat')
+                    ->label('Filter Direktorat'),
+            Tables\Filters\SelectFilter::make('id_unit_kerja')
+                    ->relationship('unitKerja', 'nama_unit')
+                    ->label('Filter Unit Kerja'),
+            // Tables\Filters\TrashedFilter::make(),
+        ])
+
         ->actions([
             // Viewer hanya bisa View & Download
             Tables\Actions\ViewAction::make(),
