@@ -78,7 +78,10 @@ class SopResource extends Resource
 
         ->actions([
             // Viewer hanya bisa View & Download
-            Tables\Actions\ViewAction::make(),
+            // Definisikan schema infolist langsung atau hubungkan secara eksplisit
+            Tables\Actions\ViewAction::make()
+                ->infolist(fn (Infolist $infolist) => self::infolist($infolist))
+                ->label('Lihat Detail'),
             Tables\Actions\Action::make('unduh')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->url(fn (Sop $record) => asset('storage/' . $record->dokumen_path))
@@ -205,8 +208,9 @@ class SopResource extends Resource
     {
         return [
             'index' => Pages\ListSops::route('/'),
-            'create' => Pages\CreateSop::route('/create'),
-            'edit' => Pages\EditSop::route('/{record}/edit'),
+            // 'create' => Pages\CreateSop::route('/create'),
+            // 'edit' => Pages\EditSop::route('/{record}/edit'),
+            'view' => Pages\ViewSop::route('/{record}'),
         ];
     }
 }
