@@ -12,6 +12,7 @@ class SopStatusChart extends ChartWidget
     protected static ?int $sort = 3;
     protected static ?string $maxHeight = '300px';
     protected int | string | array $columnSpan = 'full'; // Agar memanjang penuh dari kiri ke kanan
+    
 
     protected function getData(): array
     {

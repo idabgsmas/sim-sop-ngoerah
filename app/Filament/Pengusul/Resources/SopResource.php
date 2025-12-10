@@ -32,6 +32,30 @@ class SopResource extends Resource
     {
         return $form
             ->schema([
+                // --- TAMBAHAN BARU: SECTION CATATAN REVISI ---
+                Forms\Components\Section::make('PERHATIAN: DOKUMEN PERLU DIPERBAIKI')
+                    ->icon('heroicon-m-exclamation-triangle')
+                    // ->color('danger') // Warna Merah
+                    ->schema([
+                        Forms\Components\Placeholder::make('catatan_revisi_display')
+                            ->label('Catatan dari Verifikator:')
+                            ->content(function ($record) {
+                                // Ambil history terakhir yang statusnya 'Revisi' (ID 3)
+                                $history = $record->histories()
+                                    ->where('id_status', 3) 
+                                    ->latest('created_at')
+                                    ->first();
+                                
+                                return $history ? $history->keterangan_perubahan : 'Tidak ada catatan spesifik.';
+                            })
+                            ->extraAttributes([
+                                'class' => 'bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 font-medium',
+                            ]),
+                            
+                    ])
+                    // Logic: Hanya muncul jika Status = Revisi (ID 3)
+                    ->visible(fn ($record) => $record && $record->id_status === 3),
+
                 // --- BAGIAN 1: HEADER READ-ONLY (Info Pengusul) ---
                 Forms\Components\Section::make('Informasi Pengusul')
                     ->schema([
@@ -84,6 +108,7 @@ class SopResource extends Resource
                         Forms\Components\TextInput::make('nomor_sop')
                             ->label('Nomor Dokumen SK SOP')
                             ->maxLength(100)
+                            ->required()
                             ->unique(ignoreRecord: true),
 
                         Forms\Components\Textarea::make('deskripsi')
@@ -278,12 +303,21 @@ class SopResource extends Resource
                 // Tombol View (Bisa dilihat oleh semua yang muncul di list)
                 Tables\Actions\ViewAction::make(),
                 // Tombol Edit (Hanya muncul jika SOP ini MILIK Unit User)
+                // --- MODIFIKASI TOMBOL EDIT/REVISI ---
                 Tables\Actions\EditAction::make()
+                    // 1. Ganti Label: Jika status Revisi (3), jadi "Lakukan Revisi"
+                    ->label(fn (Sop $record) => $record->id_status === 3 ? 'Perbaiki' : 'Ubah')
+                    
+                    // 2. Ganti Warna: Kuning/Orange biar mencolok saat Revisi
+                    ->color(fn (Sop $record) => $record->id_status === 3 ? 'warning' : 'primary')
+                    
+                    // 3. Ganti Ikon: Obeng/Wrench saat Revisi (Opsional)
+                    ->icon(fn (Sop $record) => $record->id_status === 3 ? 'heroicon-m-pencil-square' : 'heroicon-m-pencil-square')
+                    
+                    // 4. Logic Visibility (Tetap sama seperti sebelumnya: Hanya unit sendiri)
                     ->visible(function (Sop $record) {
                         $user = Auth::user();
                         $myUnitIds = $user->unitKerja->pluck('id_unit_kerja')->toArray();
-                        
-                        // Logic: Tampilkan tombol Edit HANYA JIKA id_unit_kerja SOP ini termasuk dalam unit saya
                         return in_array($record->id_unit_kerja, $myUnitIds);
                     }),
             ]);
@@ -293,6 +327,28 @@ class SopResource extends Resource
     {
         return $infolist
             ->schema([
+                // --- 1. TAMBAHAN BARU: ALERT REVISI (Agar muncul di Modal View) ---
+                Infolists\Components\Section::make('PERHATIAN: DOKUMEN PERLU DIPERBAIKI')
+                    ->icon('heroicon-m-exclamation-triangle')
+                    // ->color('danger') 
+                    ->schema([
+                        Infolists\Components\TextEntry::make('catatan_revisi_display')
+                            ->label('Catatan dari Verifikator:')
+                            ->state(function ($record) {
+                                $history = $record->histories()
+                                    ->where('id_status', 3) // ID 3 = Revisi
+                                    ->latest('created_at')
+                                    ->first();
+                                return $history ? $history->keterangan_perubahan : 'Tidak ada catatan spesifik.';
+                            })
+                            ->weight('bold')
+                            ->color('danger')
+                            ->size(Infolists\Components\TextEntry\TextEntrySize::Large),
+                    ])
+                    // Hanya muncul jika status = Revisi (ID 3)
+                    ->visible(fn ($record) => $record && $record->id_status === 3),
+
+
                 // --- HEADER INFORMASI ---
                 Infolists\Components\Section::make('Informasi Dokumen')
                     ->schema([

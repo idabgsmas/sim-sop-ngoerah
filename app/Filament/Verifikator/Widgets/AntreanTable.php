@@ -36,7 +36,7 @@ class AntreanTable extends BaseWidget
                 Tables\Actions\Action::make('proses')
                     ->label('Proses')
                     ->button()
-                    ->url(fn (Sop $record) => route('filament.verifikator.resources.sops.index')),
+                    ->url(fn (Sop $record) => route('filament.verifikator.resources.sops.view', $record)),
             ]);
     }
 }

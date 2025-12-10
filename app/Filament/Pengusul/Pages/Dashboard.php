@@ -16,6 +16,7 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            // \App\Filament\Pengusul\Widgets\UserInfoWidget::class,
             \App\Filament\Pengusul\Widgets\StatsOverview::class,
             \App\Filament\Pengusul\Widgets\LatestRevisions::class,
             \App\Filament\Pengusul\Widgets\SopStatusChart::class,

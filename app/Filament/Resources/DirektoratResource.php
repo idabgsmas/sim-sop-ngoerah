@@ -45,6 +45,7 @@ class DirektoratResource extends Resource
                     ->maxLength(100),
                 Forms\Components\TextInput::make('email_direktorat')
                     ->label('Email Direktorat')
+                    ->required()
                     ->email()
                     ->maxLength(100),
                 Forms\Components\TextInput::make('no_telp')
@@ -53,7 +54,10 @@ class DirektoratResource extends Resource
                     ->maxLength(12)
                     ->minLength(12),
                 ])->columns(2),
+
+                
             ]);
+            
     }
 
     public static function table(Table $table): Table

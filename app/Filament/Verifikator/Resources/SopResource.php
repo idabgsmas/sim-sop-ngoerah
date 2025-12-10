@@ -12,10 +12,13 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Filament\Tables\Actions\Action;
+use Filament\Infolists\Components\Actions;
+use Filament\Infolists\Components\Actions\Action as InfolistAction;
+use Filament\Forms\Components\Textarea;
 use Joaopaulolndev\FilamentPdfViewer\Infolists\Components\PdfViewerEntry;
 
 class SopResource extends Resource
@@ -115,7 +118,9 @@ class SopResource extends Resource
         ->actions([
             // Tombol Lihat Detail (View Only)
             Tables\Actions\ViewAction::make()
-                ->label(''),
+                ->label('')
+                ->url(null), // <--- TAMBAHKAN BARIS INI (Set URL jadi null agar tidak pindah halaman)
+                // ->tooltip('Lihat Detail (Modal)'), // Opsional: Tambah tooltip biar jelas
 
             // Tombol Download Dokumen
             Tables\Actions\Action::make('unduh')
@@ -170,12 +175,12 @@ class SopResource extends Resource
                     // Kita bisa simpan history revisi di tabel tb_history_sop nanti
                     // Simpan catatan revisi (bisa ke history atau kolom khusus)
                     // Simpan ke history SOP
-                    // $record->histories()->create([
-                    //     'id_user' => auth()->id(),
-                    //     'id_status' => 3, // Status Revisi
-                    //     'keterangan_perubahan' => 'Catatan Verifikator: ' . $data['catatan_revisi'],
-                    //     'dokumen_path' => $record->dokumen_path, // Snapshot file saat ini
-                    // ]);
+                    $record->histories()->create([
+                        'id_user' => auth()->id(),
+                        'id_status' => 3, // Status Revisi
+                        'keterangan_perubahan' => $data['catatan_revisi'],
+                        'dokumen_path' => $record->dokumen_path, // Snapshot file saat ini
+                    ]);
                     
                     Notification::make()->title('SOP Dikembalikan untuk Revisi')->warning()->send();
                 }),
@@ -186,7 +191,27 @@ class SopResource extends Resource
     {
         return $infolist
             ->schema([
-                // --- HEADER INFORMASI ---
+                // --- TAMBAHAN BARU: ALERT REVISI ---
+                Infolists\Components\Section::make('Status: DALAM REVISI')
+                    ->icon('heroicon-m-arrow-path')
+                    // ->color('danger')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('catatan_terakhir')
+                            ->label('Catatan Revisi:')
+                            ->state(function ($record) {
+                                $history = $record->histories()
+                                    ->where('id_status', 3)
+                                    ->latest('created_at')
+                                    ->first();
+                                return $history ? $history->keterangan_perubahan : '-';
+                            })
+                            ->weight('bold')
+                            ->color('danger')
+                            ->size(Infolists\Components\TextEntry\TextEntrySize::Large),
+                    ])
+                    ->visible(fn ($record) => $record->id_status === 3), // Hanya muncul saat Revisi
+
+                    // --- HEADER INFORMASI ---
                 Infolists\Components\Section::make('Informasi Dokumen')
                     ->schema([
                         Infolists\Components\TextEntry::make('judul_sop')
@@ -287,6 +312,8 @@ class SopResource extends Resource
                             ->fileUrl(fn ($record) => asset('storage/' . $record->dokumen_path))
                             ->columnSpanFull(),
                     ]),
+                
+                
             ]);
     }
 
@@ -303,6 +330,7 @@ class SopResource extends Resource
             'index' => Pages\ListSops::route('/'),
             'create' => Pages\CreateSop::route('/create'),
             'edit' => Pages\EditSop::route('/{record}/edit'),
+            'view' => Pages\ViewSop::route('/{record}'),
         ];
     }
 }
