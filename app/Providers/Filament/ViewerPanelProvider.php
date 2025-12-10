@@ -28,6 +28,7 @@ class ViewerPanelProvider extends PanelProvider
             ->id('viewer')
             ->path('viewer')
             // ->databaseNotifications()
+            ->favicon(asset('images/favicon-32x32.png'))
             ->brandName('SIM SOP RSUP Prof.Ngoerah')
             ->brandLogo(asset('images/logo-rs-ngoerah.png'))
             ->brandLogoHeight('2.5rem')

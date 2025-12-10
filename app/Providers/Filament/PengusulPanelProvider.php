@@ -28,6 +28,7 @@ class PengusulPanelProvider extends PanelProvider
             ->id('pengusul')
             ->path('pengusul')
             ->databaseNotifications()
+            ->favicon(asset('images/favicon-32x32.png'))
             ->brandName('SIM SOP RSUP Prof.Ngoerah')
             ->brandLogo(asset('images/logo-rs-ngoerah.png'))
             ->brandLogoHeight('2.5rem')
