@@ -2,23 +2,25 @@
 
 namespace App\Filament\Verifikator\Resources;
 
-use App\Filament\Verifikator\Resources\SopResource\Pages;
-use App\Filament\Verifikator\Resources\SopResource\RelationManagers;
+use Carbon\Carbon;
 use App\Models\Sop;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Notifications\Notification;
 use Filament\Infolists;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
 use Filament\Infolists\Infolist;
+use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
-use Filament\Infolists\Components\Actions;
-use Filament\Infolists\Components\Actions\Action as InfolistAction;
 use Filament\Forms\Components\Textarea;
+use App\Services\SopNotificationService;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder;
+use Filament\Infolists\Components\Actions;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Verifikator\Resources\SopResource\Pages;
+use Filament\Infolists\Components\Actions\Action as InfolistAction;
+use App\Filament\Verifikator\Resources\SopResource\RelationManagers;
 use Joaopaulolndev\FilamentPdfViewer\Infolists\Components\PdfViewerEntry;
 
 class SopResource extends Resource
@@ -116,6 +118,49 @@ class SopResource extends Resource
         ])
 
         ->actions([
+            // --- TOMBOL BARU: KIRIM NOTIFIKASI MANUAL ---
+            Tables\Actions\Action::make('remind_review')
+                ->label('Ingatkan Review')
+                ->icon('heroicon-m-bell-alert')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Kirim Pengingat Manual')
+                ->modalDescription('Kirim notifikasi ke Pengusul untuk segera melakukan Review Tahunan? Lakukan ini jika mereka belum merespon sistem.')
+                ->action(function (Sop $record) {
+                    // Panggil Service Notifikasi
+                    $service = new SopNotificationService();
+                    
+                    // Hitung sisa hari untuk pesan yang personal
+                    $tglReview = Carbon::parse($record->tgl_review_tahunan)->startOfDay();
+                    $daysLeft = now()->startOfDay()->diffInDays($tglReview, false);
+                    $msgTime = $daysLeft == 0 ? "HARI INI" : "dalam {$daysLeft} hari";
+
+                    $service->send(
+                        $record->uploader, // Kirim ke Pengusul
+                        'Pengingat Manual: Review Tahunan',
+                        "Verifikator mengingatkan: SOP '{$record->judul_sop}' wajib direview {$msgTime}. Segera konfirmasi.",
+                        $record,
+                        'warning'
+                    );
+
+                    \Filament\Notifications\Notification::make()
+                        ->title('Pengingat Berhasil Dikirim')
+                        ->success()
+                        ->send();
+                })
+                // LOGIC VISIBILITY (Sama dengan Pengusul: H-30 s.d Hari H)
+                ->visible(function (Sop $record) {
+                    // Hanya muncul jika status Aktif & Ada tanggal review
+                    if (!$record->tgl_review_tahunan || $record->id_status !== 4) return false;
+                    
+                    $today = now()->startOfDay();
+                    $reviewDate = Carbon::parse($record->tgl_review_tahunan)->startOfDay();
+                    $startDate = $reviewDate->copy()->subDays(30);
+                    
+                    // Tampil jika: Hari ini >= H-30 DAN Hari ini <= Deadline
+                    return $today->gte($startDate) && $today->lte($reviewDate);
+                }),
+
             // Tombol Lihat Detail (View Only)
             Tables\Actions\ViewAction::make()
                 ->label('')

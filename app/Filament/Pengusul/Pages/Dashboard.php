@@ -19,6 +19,7 @@ class Dashboard extends BaseDashboard
             // \App\Filament\Pengusul\Widgets\UserInfoWidget::class,
             \App\Filament\Pengusul\Widgets\StatsOverview::class,
             \App\Filament\Pengusul\Widgets\LatestRevisions::class,
+            \App\Filament\Pengusul\Widgets\LatestReviews::class,
             \App\Filament\Pengusul\Widgets\SopStatusChart::class,
         ];
     }

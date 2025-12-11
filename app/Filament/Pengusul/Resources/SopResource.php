@@ -14,11 +14,11 @@ use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;      // Untuk hitung tanggal
+use Carbon\Carbon;      
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Pengusul\Resources\SopResource\Pages;
-use Filament\Forms\Get; // Penting untuk logika 'live'
-use Filament\Forms\Set; // Penting untuk logika 'set' value
+use Filament\Forms\Get; 
+use Filament\Forms\Set; 
 use App\Filament\Pengusul\Resources\SopResource\RelationManagers;
 use Joaopaulolndev\FilamentPdfViewer\Infolists\Components\PdfViewerEntry;
 
@@ -391,6 +391,7 @@ class SopResource extends Resource
 
                 ])
                 ->label('Aksi Review')
+                ->toolTip('Lakukan Review')
                 ->icon('heroicon-m-clock')
                 ->color('danger') // Merah biar urgency tinggi
                 // LOGIC VISIBILITY: Hanya muncul H-30 s.d Hari H
