@@ -14,15 +14,15 @@ class HistorySeeder extends Seeder
     public function run(): void
     {
         $history = [
-        [
-            'id_sop' => '4',
-            'id_user' => '4',
-            'id_status' => '3',
-            'keterangan_perubahan' => 'Terdapat kesalahan penulisan judul sop',
-            'dokumen_path' => 'sop-documents/01KC0XD5XZCPYN62RRP7S3XCXX.pdf',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ],
+        // [
+        //     'id_sop' => '4',
+        //     'id_user' => '4',
+        //     'id_status' => '3',
+        //     'keterangan_perubahan' => 'Terdapat kesalahan penulisan judul sop',
+        //     'dokumen_path' => 'sop-documents/01KC0XD5XZCPYN62RRP7S3XCXX.pdf',
+        //     'created_at' => now(),
+        //     'updated_at' => now(),
+        // ],
         [
             'id_sop' => '16',
             'id_user' => '14',
