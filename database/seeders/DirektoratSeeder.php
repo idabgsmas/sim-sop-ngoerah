@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DirektoratSeeder extends Seeder
 {
@@ -45,6 +46,6 @@ class DirektoratSeeder extends Seeder
             'updated_at' => now()
         ]];
 
-        // DB::table('tb_direktorat')->insert($direktorat);
+        DB::table('tb_direktorat')->insert($direktorat);
     }
 }

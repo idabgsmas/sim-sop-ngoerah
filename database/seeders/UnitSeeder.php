@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class UnitSeeder extends Seeder
 {
@@ -204,6 +205,6 @@ class UnitSeeder extends Seeder
         ]
         ];
 
-        // DB::table('tb_unit_kerja')->insert($unit);
+        DB::table('tb_unit_kerja')->insert($unit);
     }
 }
