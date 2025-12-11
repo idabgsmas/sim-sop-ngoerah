@@ -7,6 +7,7 @@ use App\Models\Sop;
 use App\Models\TbUser;
 use Filament\Notifications\Notification;
 use Carbon\Carbon;
+use App\Services\SopNotificationService;
 
 class SopScheduler extends Command
 {
@@ -15,42 +16,58 @@ class SopScheduler extends Command
 
     public function handle()
     {
-        $this->info('Menjalankan scheduler SOP...');
+        $this->info('--- MEMULAI SCHEDULER SOP ---');
         
         // --- BAGIAN A: REVIEW TAHUNAN ---
-        
-        // 1. Logic Reminder (H-30 s.d H+30)
+        $startRange = now()->startOfDay(); 
+        $endRange   = now()->addDays(30)->endOfDay();
+
+        $this->info("Mencari SOP Review antara: " . $startRange->toDateTimeString() . " s.d " . $endRange->toDateTimeString());
+
+        // 1. Logic Reminder (H-30 s.d Hari H)
         // Kirim notifikasi setiap 3 hari jika belum direview
-        $reviewSops = Sop::where('id_status', 4) // Aktif
+        // Cari SOP yang tanggal reviewnya ada di masa depan (<= 30 hari lagi)
+        $reviewSops = Sop::where('id_status', 4)
             ->whereNotNull('tgl_review_tahunan')
-            ->whereBetween('tgl_review_tahunan', [now()->subDays(30), now()->addDays(30)])
+            ->whereBetween('tgl_review_tahunan', [$startRange, $endRange])
             ->get();
 
+        $this->info("Ditemukan " . $reviewSops->count() . " calon SOP untuk direview.");
+
         foreach ($reviewSops as $sop) {
-            $tglReview = Carbon::parse($sop->tgl_review_tahunan);
-            $diffDays = now()->diffInDays($tglReview, false); // (+) belum lewat, (-) sudah lewat
+            $tglReview = Carbon::parse($sop->tgl_review_tahunan)->startOfDay();
+            $daysLeft  = now()->startOfDay()->diffInDays($tglReview, false); // Hasil Positif (Sisa hari)
+
+            $this->info(" -> SOP: {$sop->judul_sop} | Target: {$tglReview->format('Y-m-d')} | Sisa Hari: {$daysLeft}");
             
-            // Kirim notifikasi setiap kelipatan 3 hari
-            if (abs($diffDays) % 3 === 0) {
-                $statusMsg = $diffDays >= 0 ? "dalam {$diffDays} hari" : "terlewat " . abs($diffDays) . " hari";
+            // Kirim notifikasi setiap kelipatan 3 hari (30, 27, 24, ... 3, 0)
+            // Gunakan abs() untuk jaga-jaga, tapi logic query di atas harusnya menjamin daysLeft >= 0
+            if ($daysLeft >= 0 && $daysLeft % 3 === 0) {
+                $msg = $daysLeft === 0 
+                    ? "Jadwal review HARI INI. Ini kesempatan terakhir."
+                    : "Jadwal review dalam {$daysLeft} hari lagi.";
+                    
                 $this->sendNotification(
                     $sop,
-                    'Waktunya Review Tahunan',
-                    "SOP '{$sop->judul_sop}' jadwal review {$statusMsg}. Segera konfirmasi di dashboard.",
+                    'Pengingat Review Tahunan',
+                    "SOP '{$sop->judul_sop}' perlu direview. {$msg}",
                     'warning'
                 );
+
+                $this->info("    [V] Notifikasi DIKIRIM.");
+            } else{
+                $this->info("    [X] Skip (Bukan jadwal 3 harian).");
             }
         }
 
         // 2. Logic Auto-Skip (Jika lewat 30 hari tanpa aksi)
         $expiredReviewSops = Sop::where('id_status', 4)
             ->whereNotNull('tgl_review_tahunan')
-            ->where('tgl_review_tahunan', '<', now()->subDays(30))
+            ->whereDate('tgl_review_tahunan', '<', now())
             ->get();
 
         foreach ($expiredReviewSops as $sop) {
-            $currentReview = Carbon::parse($sop->tgl_review_tahunan);
-            $nextReview = $currentReview->copy()->addYear();
+            $nextReview = Carbon::parse($sop->tgl_review_tahunan)->addYear();
             $expiredDate = Carbon::parse($sop->tgl_kadaluwarsa);
 
             // Cek: Apakah tahun depan sudah expired?
@@ -70,7 +87,7 @@ class SopScheduler extends Command
                 
                 $this->sendNotification(
                     $sop,
-                    'Review Tahunan Terlewat (Auto-Update)',
+                    'Review Tahunan Terlewat',
                     "Batas waktu review SOP '{$sop->judul_sop}' habis. Jadwal review otomatis diperbarui ke tahun depan.",
                     'info'
                 );
@@ -115,7 +132,7 @@ class SopScheduler extends Command
             );
         }
 
-        $this->info('Scheduler selesai.');
+        $this->info('--- SCHEDULER SELESAI ---');
     }
 
     private function sendNotification($sop, $title, $body, $type)

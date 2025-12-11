@@ -20,7 +20,7 @@ class StatsOverview extends BaseWidget
     // ATUR GRID: 3 Kolom agar menjadi 2 Baris yang rapi (Total 6 Widget)
     protected function getColumns(): int
     {
-        return 3;
+        return 4;
     }
 
     protected function getStats(): array
@@ -60,6 +60,13 @@ class StatsOverview extends BaseWidget
             ->where('id_status', Sop::STATUS_AKTIF) // Hanya yang aktif
             ->whereBetween('tgl_kadaluwarsa', [now(), now()->addDays(90)])
             ->count();
+        
+        // 7. PERLU REVIEW TAHUNAN (Logic Baru)
+        // Kriteria: Aktif DAN Tgl Review ada di rentang (Hari ini - 30 hari) s.d. Hari ini
+        $reviewSop = Sop::whereIn('id_unit_kerja', $myUnitIds)
+            ->where('id_status', Sop::STATUS_AKTIF)
+            ->whereBetween('tgl_review_tahunan', [now(), now()->addDays(30)]) // <--- UBAH DI SINI
+            ->count();
 
         return [
             // BARIS 1: Status Dokumen
@@ -94,6 +101,12 @@ class StatsOverview extends BaseWidget
                 ->color('warning')
                 ->url(route('filament.pengusul.resources.sops.index', ['tableFilters[id_status][value]' => 2])), // Kuning
 
+            Stat::make('Perlu Review Tahunan', $reviewSop) // <--- Widget Baru
+                ->description('Jadwal H-30 s.d Hari H')
+                ->descriptionIcon('heroicon-m-calendar-days')
+                ->color($reviewSop > 0 ? 'warning' : 'success') // Kuning jika ada yg perlu review
+                ->url(route('filament.pengusul.resources.sops.index')), // Link ke tabel
+            
             Stat::make('Akan Kadaluwarsa', $warningSop)
                 ->description('< 90 hari lagi (Warning)')
                 ->descriptionIcon('heroicon-m-bell-alert')

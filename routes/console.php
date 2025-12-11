@@ -8,4 +8,6 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('sop:run-scheduler')->dailyAt('08:00'); // Jalan tiap jam 8 pagi
+Schedule::command('sop:run-scheduler')
+    ->dailyAt('01:00') // Jalan setiap hari jam 01:00 Pagi
+    ->timezone('Asia/Makassar'); // Sesuaikan timezone (WITA)

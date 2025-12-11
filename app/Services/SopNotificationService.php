@@ -63,7 +63,12 @@ class SopNotificationService
 
         return match ($role) {
             'Verifikator' => route('filament.verifikator.resources.sops.view', $sop), // Ke halaman View
-            'Pengusul'    => route('filament.pengusul.resources.sops.edit', $sop),    // Ke halaman Edit
+            'Pengusul' => match ($sop->id_status) {
+                // Revisi -> Edit
+                3 => route('filament.pengusul.resources.sops.edit', $sop),
+                // Aktif/Lainnya -> View
+                default => route('filament.pengusul.resources.sops.view', $sop),
+            },
             default       => '#',
         };
     }

@@ -393,15 +393,16 @@ class SopResource extends Resource
                 ->label('Aksi Review')
                 ->icon('heroicon-m-clock')
                 ->color('danger') // Merah biar urgency tinggi
-                // LOGIC VISIBILITY: Hanya muncul H-30 s.d H+30
+                // LOGIC VISIBILITY: Hanya muncul H-30 s.d Hari H
                 ->visible(function (Sop $record) {
                     if (!$record->tgl_review_tahunan || $record->id_status !== 4) return false;
                     
-                    $today = now();
-                    $reviewDate = Carbon::parse($record->tgl_review_tahunan);
+                    $today = now()->startOfDay(); // Pastikan jam 00:00 agar akurat
+                    $reviewDate = Carbon::parse($record->tgl_review_tahunan)->startOfDay();
+                    $startDate = $reviewDate->copy()->subDays(30);
                     
-                    // Cek rentang waktu (30 hari sebelum S.D. 30 hari sesudah)
-                    return $today->between($reviewDate->copy()->subDays(90), $reviewDate->copy()->addDays(30));
+                    // Cek rentang waktu (30 hari sebelum S.D. Hari H)
+                    return $today->between($startDate, $reviewDate->copy());
                 }),
             ]);
     }
@@ -571,6 +572,7 @@ class SopResource extends Resource
             'index' => Pages\ListSops::route('/'),
             'create' => Pages\CreateSop::route('/create'),
             'edit' => Pages\EditSop::route('/{record}/edit'),
+            'view' => Pages\ViewSop::route('/{record}'),
         ];
     }
 }

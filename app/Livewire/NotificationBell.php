@@ -58,9 +58,22 @@ class NotificationBell extends Component
         $role = Auth::user()->role->nama_role ?? '';
         $sopId = $this->selectedNotification->id_sop;
 
+        // Ambil data SOP untuk cek status
+        $sop = \App\Models\Sop::find($sopId);
+        if (!$sop) return '#';
+
         return match ($role) {
             'Verifikator' => route('filament.verifikator.resources.sops.view', $sopId),
-            'Pengusul'    => route('filament.pengusul.resources.sops.edit', $sopId),
+            'Pengusul' => match ($sop->id_status) {
+                // Jika REVISI (3) -> Masuk mode EDIT
+                3 => route('filament.pengusul.resources.sops.edit', $sopId),
+                
+                // Jika AKTIF (4) atau DITOLAK -> Masuk mode VIEW
+                4 => route('filament.pengusul.resources.sops.view', $sopId),
+                
+                // Default (misal Draft/Belum Verif) -> VIEW saja biar aman
+                default => route('filament.pengusul.resources.sops.view', $sopId),
+            },
             'Viewer'      => route('filament.viewer.resources.sops.view', $sopId), // Asumsi route viewer
             default       => '#',
         };
