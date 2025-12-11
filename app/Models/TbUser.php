@@ -13,8 +13,7 @@ use Filament\Models\Contracts\FilamentUser; // Penting untuk Filament
 
 class TbUser extends Authenticatable implements FilamentUser, HasName
 {
-    use Notifiable, SoftDeletes;
-    use HasDatabaseNotifications;
+    use Notifiable, SoftDeletes, HasDatabaseNotifications;
 
     protected $table = 'tb_user';       // Custom Table Name
     protected $primaryKey = 'id_user';  // Custom PK

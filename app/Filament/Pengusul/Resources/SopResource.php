@@ -2,23 +2,24 @@
 
 namespace App\Filament\Pengusul\Resources;
 
-use App\Filament\Pengusul\Resources\SopResource\Pages;
-use App\Filament\Pengusul\Resources\SopResource\RelationManagers;
 use App\Models\Sop;
-use App\Models\TbUser;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use App\Models\TbUser;
+use Filament\Infolists;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
+use Filament\Infolists\Infolist;
+use Filament\Resources\Resource;
+use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;      // Untuk hitung tanggal
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Pengusul\Resources\SopResource\Pages;
 use Filament\Forms\Get; // Penting untuk logika 'live'
 use Filament\Forms\Set; // Penting untuk logika 'set' value
-use Carbon\Carbon;      // Untuk hitung tanggal
-use Illuminate\Support\Facades\Auth;
-use Filament\Infolists;
-use Filament\Infolists\Infolist;
+use App\Filament\Pengusul\Resources\SopResource\RelationManagers;
 use Joaopaulolndev\FilamentPdfViewer\Infolists\Components\PdfViewerEntry;
 
 class SopResource extends Resource
@@ -302,6 +303,7 @@ class SopResource extends Resource
             ->actions([
                 // Tombol View (Bisa dilihat oleh semua yang muncul di list)
                 Tables\Actions\ViewAction::make(),
+
                 // Tombol Edit (Hanya muncul jika SOP ini MILIK Unit User)
                 // --- MODIFIKASI TOMBOL EDIT/REVISI ---
                 Tables\Actions\EditAction::make()
@@ -320,6 +322,87 @@ class SopResource extends Resource
                         $myUnitIds = $user->unitKerja->pluck('id_unit_kerja')->toArray();
                         return in_array($record->id_unit_kerja, $myUnitIds);
                     }),
+                
+                // --- TOMBOL KHUSUS: REVIEW TAHUNAN ---
+                Tables\Actions\ActionGroup::make([
+                // AKSI 1: KONFIRMASI (TIDAK ADA PERUBAHAN)
+                    Tables\Actions\Action::make('confirm_review')
+                        ->label('Review: Tidak Ada Perubahan')
+                        ->icon('heroicon-m-check-badge')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalDescription('Konfirmasi bahwa SOP ini masih relevan? Jadwal review akan diperbarui ke tahun depan.')
+                        ->action(function (Sop $record) {
+                            $nextReview = Carbon::parse($record->tgl_review_tahunan)->addYear();
+                            
+                            // Cek Expired
+                            if ($record->tgl_kadaluwarsa && $nextReview->gte($record->tgl_kadaluwarsa)) {
+                                // Stop Review, fokus expired
+                                $record->update(['tgl_review_tahunan' => null]);
+                                
+                                Notification::make()
+                                    ->title('Review Terakhir Selesai')
+                                    ->body('Tahun depan SOP sudah expired. Jadwal review dihentikan.')
+                                    ->warning()
+                                    ->send();
+                            } else {
+                                // Update ke tahun depan
+                                $record->update(['tgl_review_tahunan' => $nextReview]);
+                                
+                                Notification::make()
+                                    ->title('Review Tahunan Berhasil')
+                                    ->body('Jadwal review diperbarui ke tahun depan.')
+                                    ->success()
+                                    ->send();
+                            }
+                        }),
+
+                    // AKSI 2: LAKUKAN PERUBAHAN (EDIT)
+                    Tables\Actions\Action::make('change_review')
+                        ->label('Review: Lakukan Perubahan')
+                        ->icon('heroicon-m-pencil-square')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalDescription('Status akan berubah menjadi REVISI agar Anda bisa mengupload file baru. Lanjutkan?')
+                        ->action(function (Sop $record) {
+                            // 1. Update Tanggal Review DULU (karena user sudah merespon review ini)
+                            // Kita asumsikan jika mereka merevisi sekarang, review tahunan "dianggap done" untuk siklus ini.
+                            // Nanti saat diajukan ulang & aktif, tanggal review akan dihitung ulang otomatis 
+                            // oleh logic 'afterStateUpdated' di Form Create/Edit jika TMT berubah.
+                            // TAPI, jika TMT tidak berubah, kita perlu manual bump tanggalnya di sini atau saat approve.
+                            
+                            // Strategi Aman: Kita update status jadi REVISI.
+                            // Masalah tanggal review tahun depan biarkan ditangani saat Approval Verifikator nanti (atau form edit).
+                            
+                            $record->update([
+                                'id_status' => Sop::STATUS_REVISI, 
+                            ]);
+
+                            // Opsional: Catat history
+                            $record->histories()->create([
+                                'id_user' => auth()->id(),
+                                'id_status' => Sop::STATUS_REVISI,
+                                'keterangan_perubahan' => 'Review Tahunan: Melakukan perubahan dokumen.',
+                                'dokumen_path' => $record->dokumen_path,
+                            ]);
+                            
+                            return redirect()->route('filament.pengusul.resources.sops.edit', $record);
+                        }),
+
+                ])
+                ->label('Aksi Review')
+                ->icon('heroicon-m-clock')
+                ->color('danger') // Merah biar urgency tinggi
+                // LOGIC VISIBILITY: Hanya muncul H-30 s.d H+30
+                ->visible(function (Sop $record) {
+                    if (!$record->tgl_review_tahunan || $record->id_status !== 4) return false;
+                    
+                    $today = now();
+                    $reviewDate = Carbon::parse($record->tgl_review_tahunan);
+                    
+                    // Cek rentang waktu (30 hari sebelum S.D. 30 hari sesudah)
+                    return $today->between($reviewDate->copy()->subDays(90), $reviewDate->copy()->addDays(30));
+                }),
             ]);
     }
 

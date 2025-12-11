@@ -29,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->databaseNotifications()
+            // ->databaseNotifications()
             ->favicon(asset('images/favicon-32x32.png'))
             ->brandName('SIM SOP RSUP Prof.Ngoerah')
             ->brandLogo(asset('images/logo-rs-ngoerah.png'))

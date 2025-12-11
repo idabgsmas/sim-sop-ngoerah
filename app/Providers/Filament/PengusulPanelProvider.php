@@ -27,7 +27,7 @@ class PengusulPanelProvider extends PanelProvider
         return $panel
             ->id('pengusul')
             ->path('pengusul')
-            ->databaseNotifications()
+            // ->databaseNotifications()
             ->favicon(asset('images/favicon-32x32.png'))
             ->brandName('SIM SOP RSUP Prof.Ngoerah')
             ->brandLogo(asset('images/logo-rs-ngoerah.png'))
