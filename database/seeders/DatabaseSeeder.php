@@ -17,7 +17,8 @@ class DatabaseSeeder extends Seeder
             // DirektoratSeeder::class,
             // UnitSeeder::class,
             //SopSeeder::class,
-            SopapUnitSeeder::class
+            SopapUnitSeeder::class,
+            HistorySeeder::class
         ]);
         
         // 2. Buat User Admin
