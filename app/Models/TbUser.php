@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\HasDatabaseNotifications;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Filament\Models\Contracts\FilamentUser; // Penting untuk Filament
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 
 
-class TbUser extends Authenticatable implements FilamentUser, HasName
+class TbUser extends Authenticatable implements FilamentUser, HasName, CanResetPasswordContract
 {
-    use Notifiable, SoftDeletes, HasDatabaseNotifications;
+    use Notifiable, SoftDeletes, HasDatabaseNotifications, CanResetPassword;
 
     protected $table = 'tb_user';       // Custom Table Name
     protected $primaryKey = 'id_user';  // Custom PK

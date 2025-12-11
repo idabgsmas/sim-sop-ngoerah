@@ -33,6 +33,7 @@ class ViewerPanelProvider extends PanelProvider
             ->brandLogo(asset('images/logo-rs-ngoerah.png'))
             ->brandLogoHeight('2.5rem')
             ->login(CustomLogin::class)
+            ->passwordReset()
             ->colors([
                 'primary' => Color::Yellow,
             ])

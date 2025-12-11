@@ -34,7 +34,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('SIM SOP RSUP Prof.Ngoerah')
             ->brandLogo(asset('images/logo-rs-ngoerah.png'))
             ->brandLogoHeight('2.5rem')
-            // ->passwordReset()
+            ->passwordReset()
             // ->login()
             ->login(CustomLogin::class)
             ->emailVerification()

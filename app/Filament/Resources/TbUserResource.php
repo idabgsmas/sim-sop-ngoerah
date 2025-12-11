@@ -2,19 +2,20 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\TbUserResource\Pages;
-use App\Filament\Resources\TbUserResource\RelationManagers;
-use App\Models\TbUser;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Table;
+use App\Models\TbUser;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
+use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rules\Password;
+use App\Filament\Resources\TbUserResource\Pages;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Resources\TbUserResource\RelationManagers;
 
 class TbUserResource extends Resource
 {
@@ -59,7 +60,18 @@ class TbUserResource extends Resource
                     ->password()
                     ->dehydrateStateUsing(fn ($state) => Hash::make($state)) // Hash password
                     ->dehydrated(fn ($state) => filled($state)) // Hanya simpan jika diisi
-                    ->required(fn (string $context): bool => $context === 'create'),
+                    ->required(fn (string $context): bool => $context === 'create')
+                    ->revealable() // Fitur mata (show/hide password)
+                    // --- ATURAN PASSWORD ---
+                    ->rule(Password::min(8) // Minimal 8 Karakter
+                        ->letters()         // Harus ada huruf
+                        ->mixedCase()       // Harus ada huruf Besar & Kecil
+                        ->numbers()         // Harus ada angka
+                        ->symbols()         // Harus ada simbol (!@#$%)
+                    )
+                    // Pesan Error Custom (Opsional, jika ingin bahasa Indonesia yang jelas)
+                    ->validationAttribute('kata sandi')
+                    ->helperText('Minimal 8 karakter, kombinasi huruf besar, huruf kecil, angka, dan simbol.'),
             ])->columns(2),
 
             Forms\Components\Section::make('Hak Akses & Penugasan')->schema([
